@@ -24,6 +24,81 @@ const client = new Client({
 
 client.connect();
 
+
+const flowSelRest = addKeyword([EVENTS.ACTION])
+    .addAnswer(' _Escribe la opción que te apetece_ 😋', { capture: true }, async (ctx, { flowDynamic }) => {
+        const tipoSeleccionado = ctx.body;
+        try {
+            const query = 'SELECT codigo_sitio, ruta_foto, titulo, descripcion, direccion FROM sitios_turisticos WHERE codigo_categoria = $1 AND ctipres = $2';
+            const res = await client.query(query, ['RES', parseInt(tipoSeleccionado)]);
+            if (res.rows.length > 0) {
+                for (const row of res.rows) {
+                    const { codigo_sitio, ruta_foto, titulo, descripcion, direccion } = row;
+                    const message = `${codigo_sitio}\n*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
+                    console.log(`En flowSelRest - ruta_foto: ${ruta_foto}`); 
+                    await flowDynamic([{
+                        body: message,
+                        media: ruta_foto,
+                    }]);
+                }
+            } else {
+                await flowDynamic("No hay restaurantes disponibles para el tipo seleccionado en este momento.");
+            }
+        } catch (err) {
+            console.error("Error al recuperar los restaurantes: ", err);
+            await flowDynamic("Ocurrió un error al recuperar los restaurantes.");
+        }
+    });
+
+const flowSitiosT = addKeyword([EVENTS.ACTION])
+    .addAnswer('☀️ *BIENVENIDO A GIRARDOT* ☀️\nConoce sus maravillosos sitios turisticos 😎', {}, async (ctx, { flowDynamic, gotoFlow }) => {
+        try {
+            const query = 'SELECT ruta_foto, titulo, descripcion, direccion FROM sitios_turisticos WHERE codigo_categoria = $1';
+            const res = await client.query(query, ['CUL']);
+            if (res.rows.length > 0) {
+                for (const row of res.rows) {
+                    const { ruta_foto, titulo, descripcion, direccion } = row;
+                    const message = `*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
+                    console.log(`En flowSitiosT - ruta_foto: ${ruta_foto}`);
+                    await flowDynamic([{
+                        body: message,
+                        media: ruta_foto,
+                    }]);
+                }
+            } else {
+                console.log("No hay sitios turísticos disponibles para la categoría CUL.");
+                await flowDynamic("No hay sitios turísticos disponibles con el código 'CUL' en este momento.");
+            }
+        } catch (err) {
+            console.error("Error al realizar la consulta: ", err);
+            await flowDynamic("Ocurrió un error al recuperar los sitios turísticos.");
+        }
+    });
+
+const flowCatRest = addKeyword([EVENTS.ACTION])
+    .addAnswer('🤔 *¿Qué deseas comer?* ', {}, async (ctx, { flowDynamic, gotoFlow }) => {
+        try {
+            const tipoQuery = 'SELECT id, t_descripcion FROM tipo_restaurante WHERE t_estado = $1';
+            const tipoRes = await client.query(tipoQuery, ['A']);
+            if (tipoRes.rows.length > 0) {
+                let tiposMensaje = '';
+                const opciones = [];
+                for (const tipo of tipoRes.rows) {
+                    tiposMensaje += `${tipo.id} - ${tipo.t_descripcion}\n`;
+                    opciones.push(tipo.id.toString());  // Convertir a string
+                }
+                await flowDynamic(tiposMensaje);
+                return gotoFlow(flowSelRest)
+            } else {
+                await flowDynamic("No hay tipos de restaurantes disponibles en este momento.");
+            }
+        } catch (err) {
+            console.error("Error en la consulta SQL:", err);
+            await flowDynamic("Ocurrió un error al recuperar los tipos de restaurantes.");
+        }
+    });
+
+
 const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ']).addAnswer(
     menu,
     { capture: true },
@@ -35,29 +110,9 @@ const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ'])
         }
         switch (ctx.body) {
             case "1":
-                const query = 'SELECT ruta_foto, titulo, descripcion, direccion FROM sitios_turisticos WHERE codigo_categoria = $1';
-                try {
-                    const res = await client.query(query, ['CUL']);
-                    if (res.rows.length > 0) {
-                        for (const row of res.rows) {
-                            const { ruta_foto, titulo, descripcion, direccion } = row;
-                            const message = `*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
-                            console.log(message);
-                            await flowDynamic([{
-                                body: message,
-                                media: ruta_foto,
-                            }]);
-                        }
-                    } else {
-                        await flowDynamic("No hay sitios turísticos disponibles con el código 'CUL' en este momento.");
-                    }
-                } catch (err) {
-                    console.error(err);
-                    await flowDynamic("Ocurrió un error al recuperar los sitios turísticos.");
-                }
-                break;
+                return gotoFlow(flowSitiosT);
             case "2":
-                return await flowDynamic("Restaurantes")
+                return gotoFlow(flowCatRest);
             case "3":
                 return await flowDynamic("Bares / Discotecas")
             case "4":
@@ -90,7 +145,7 @@ const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
     )
 
 const main = async () => {
-    const adapterFlow = createFlow([welcomeFlow, menuFlow])
+    const adapterFlow = createFlow([welcomeFlow, menuFlow, flowCatRest, flowSitiosT, flowSelRest])
 
     const adapterProvider = createProvider(Provider)
     const adapterDB = new Database()
