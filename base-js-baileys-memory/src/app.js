@@ -35,7 +35,6 @@ const flowSelRest = addKeyword([EVENTS.ACTION])
                 for (const row of res.rows) {
                     const { codigo_sitio, ruta_foto, titulo, descripcion, direccion } = row;
                     const message = `${codigo_sitio}\n*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
-                    console.log(`En flowSelRest - ruta_foto: ${ruta_foto}`); 
                     await flowDynamic([{
                         body: message,
                         media: ruta_foto,
@@ -59,7 +58,6 @@ const flowSitiosT = addKeyword([EVENTS.ACTION])
                 for (const row of res.rows) {
                     const { ruta_foto, titulo, descripcion, direccion } = row;
                     const message = `*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
-                    console.log(`En flowSitiosT - ruta_foto: ${ruta_foto}`);
                     await flowDynamic([{
                         body: message,
                         media: ruta_foto,
@@ -122,7 +120,7 @@ const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ'])
             case "6":
                 return await flowDynamic("Pregunta algo")
             case "0":
-                return await flowDynamic("🏃 Saliendo... Puedes volver a acceder a este menú escribiendo *Menu*");
+                return await flowDynamic("🏃 Saliendo... Puedes volver a acceder a este menú escribiendo *menu*");
         }
     }
 );
