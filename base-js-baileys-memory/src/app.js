@@ -24,9 +24,54 @@ const client = new Client({
 
 client.connect();
 
+//TODO
+//CREAR EN LA TABLA sitios_turisticos DOS CAMPOS: ruta_menu Y num_contacto
+
+
+const flowDespRest = addKeyword([EVENTS.ACTION])
+    .addAnswer("LLAMA A LA CENTRAL INUTIL")
+
+const flowMenuRest = addKeyword([EVENTS.ACTION])
+    .addAnswer('Escribe el número del restaurante que deseas obtener más informacion 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow, fallBack }) => {
+        const resNumRest = ctx.body
+        try{
+            const query = 'SELECT ruta_menu, titulo, direccion, num_contacto FROM sitios_turisticos WHERE codigo_categoria = $1 AND homocodres = $2';
+            const res = await client.query(query, ['RES', parseInt(resNumRest)]);
+            if (res.rows.length > 0) {
+                for (const row of res.rows) {
+                    const { ruta_menu, titulo, direccion, num_contacto} = row;
+                    const message = `*${titulo}*\n${num_contacto}\n_Dirección: ${direccion}_`;
+                    await flowDynamic([{
+                        body: message,
+                        media: ruta_menu,
+                    }]);
+                }
+                return gotoFlow(flowDespRest)
+            } else {
+                await flowDynamic("No hay carta disponible para el restaurante seleccionado en este momento.");
+            }
+        } catch(err){
+            console.error("Error al recuperar la carta del restaurante: ", err);
+            await flowDynamic("Ocurrió un error al recuperar la carta del restaurante.");
+        }
+    });
+
+const flowOpcionRest = addKeyword([EVENTS.ACTION])
+    .addAnswer('¿Deseas más información acerca de un restaurante? 🤔\nEscribe *SI* ✅ o *NO* ❌', { capture: true }, async (ctx, { flowDynamic, gotoFlow, fallBack }) => {
+        const resOpCres = ctx.body;
+        if (!["si", "no"].includes(resOpCres.toLocaleLowerCase())) {
+            return fallBack('Debes escribir *SI* ✅ o *NO* ❌')
+        } else {
+            if (resOpCres.toLocaleLowerCase() === 'si') {
+                return gotoFlow(flowMenuRest)
+            } else {
+                return gotoFlow(menuFlow)
+            }
+        }
+    });
 
 const flowSelRest = addKeyword([EVENTS.ACTION])
-    .addAnswer(' _Escribe la opción que te apetece_ 😋', { capture: true }, async (ctx, { flowDynamic }) => {
+    .addAnswer(' _Escribe la opción que te apetece_ 😋', { capture: true }, async (ctx, { flowDynamic, gotoFlow }) => {
         const tipoSeleccionado = ctx.body;
         try {
             const query = 'SELECT codigo_sitio, ruta_foto, titulo, descripcion, direccion FROM sitios_turisticos WHERE codigo_categoria = $1 AND ctipres = $2';
@@ -40,6 +85,7 @@ const flowSelRest = addKeyword([EVENTS.ACTION])
                         media: ruta_foto,
                     }]);
                 }
+                return gotoFlow(flowOpcionRest)
             } else {
                 await flowDynamic("No hay restaurantes disponibles para el tipo seleccionado en este momento.");
             }
@@ -134,7 +180,7 @@ const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
         ].join('\n'),
         { delay: 800, capture: true },
         async (ctx, { fallBack }) => {
-            if (!ctx.body.toLocaleLowerCase().includes(['menu', 'menú'])) {
+            if (!['menu', 'menú'].includes(ctx.body.toLocaleLowerCase())) {
                 return fallBack('Debes escribir *menu* 👀')
             }
             return
@@ -143,7 +189,7 @@ const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
     )
 
 const main = async () => {
-    const adapterFlow = createFlow([welcomeFlow, menuFlow, flowCatRest, flowSitiosT, flowSelRest])
+    const adapterFlow = createFlow([welcomeFlow, menuFlow, flowCatRest, flowSitiosT, flowSelRest, flowOpcionRest, flowMenuRest])
 
     const adapterProvider = createProvider(Provider)
     const adapterDB = new Database()

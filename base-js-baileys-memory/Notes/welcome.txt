@@ -1,10 +1,10 @@
 *Escribe el número de la opción del menú* ☀️👉
 
-Opción 1 - ⛪ Sitios Culturales
-Opción 2 - 🥩 Restaurantes
-Opción 3 - 🍻 Bares / Discotecas
-Opción 4 - 🛏️ Hoteles
-Opción 5 - 🏊🏼 Piscinas
-Opción 6 - 🗣️ Preguntame cualquier cosa
+1 - ⛪ Sitios Culturales
+2 - 🥩 Restaurantes
+3 - 🍻 Bares / Discotecas
+4 - 🛏️ Hoteles
+5 - 🏊🏼 Piscinas
+6 - 🗣️ Preguntame cualquier cosa
 
-Opción 0 - 🏃 Salir
+0 - 🏃 Salir
