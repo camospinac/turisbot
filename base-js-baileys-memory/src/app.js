@@ -12,6 +12,8 @@ const menu = fs.readFileSync(menuPath, "utf-8");
 import pkg from 'pg';
 const { Client } = pkg;
 
+//reservabot@reservabot.iam.gserviceaccount.com
+
 const PORT = process.env.PORT ?? 3008
 
 const client = new Client({
@@ -24,12 +26,8 @@ const client = new Client({
 
 client.connect();
 
-//TODO
-//CREAR EN LA TABLA sitios_turisticos DOS CAMPOS: ruta_menu Y num_contacto
-
-
 const flowDespRest = addKeyword([EVENTS.ACTION])
-    .addAnswer("LLAMA A LA CENTRAL INUTIL")
+    .addAnswer("LLAMANDO A LA CENTRAL.... 📞📞📞")
 
 const flowMenuRest = addKeyword([EVENTS.ACTION])
     .addAnswer('Escribe el número del restaurante que deseas obtener más informacion 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow, fallBack }) => {
@@ -40,7 +38,7 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
             if (res.rows.length > 0) {
                 for (const row of res.rows) {
                     const { ruta_menu, titulo, direccion, num_contacto} = row;
-                    const message = `*${titulo}*\n${num_contacto}\n_Dirección: ${direccion}_`;
+                    const message = `*${titulo}*\n📲 ${num_contacto}\n📌 ${direccion}`;
                     await flowDynamic([{
                         body: message,
                         media: ruta_menu,
@@ -74,12 +72,12 @@ const flowSelRest = addKeyword([EVENTS.ACTION])
     .addAnswer(' _Escribe la opción que te apetece_ 😋', { capture: true }, async (ctx, { flowDynamic, gotoFlow }) => {
         const tipoSeleccionado = ctx.body;
         try {
-            const query = 'SELECT codigo_sitio, ruta_foto, titulo, descripcion, direccion FROM sitios_turisticos WHERE codigo_categoria = $1 AND ctipres = $2';
+            const query = 'SELECT homocodres, ruta_foto, titulo, descripcion, direccion FROM sitios_turisticos WHERE codigo_categoria = $1 AND ctipres = $2';
             const res = await client.query(query, ['RES', parseInt(tipoSeleccionado)]);
             if (res.rows.length > 0) {
                 for (const row of res.rows) {
-                    const { codigo_sitio, ruta_foto, titulo, descripcion, direccion } = row;
-                    const message = `${codigo_sitio}\n*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
+                    const { homocodres, ruta_foto, titulo, descripcion, direccion } = row;
+                    const message = `Restaurante #${homocodres}\n*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
                     await flowDynamic([{
                         body: message,
                         media: ruta_foto,
