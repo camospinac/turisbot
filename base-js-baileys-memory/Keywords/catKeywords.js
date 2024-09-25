@@ -8,7 +8,8 @@ export const keywords = {
         "quiero ver qué hay en girardot", "quiero sitios turísticos", "deseo ver atracciones",
         "enseñame lugares", "enseñame girardot", "quiero turistear", "conocer", "conocer girardot",
         "deseo visitar lugares", "deseo conocer girardot", "sitio turistico", "turistico",
-        "visitar"
+        "visitar", "sitio turistico", "turistico", "iglesia", "museos", "historia", "centro",
+        "quiero sitios turisticos", "turisticos"
     ],
     "2": [
         "comer", "restaurantes", "restaurante", "ver restaurantes",
@@ -17,7 +18,8 @@ export const keywords = {
         "quiero ver restaurantes", "deseo almorzar", "deseo cenar", "busco restaurante",
         "donde puedo cenar", "busco algo para cenar", "quiero comer algo",
         "tengo hambre", "deseo almorzar algo", "muestrame restaurantes", "muero de hambre",
-        "restaurantes en girardot", "restaurant", "rest", "hambre"
+        "restaurantes en girardot", "restaurant", "rest", "hambre", "comida", "hambriento",
+        "cenar", "almorzar", "almuerzo", "cena", "cenar"
     ],
     "3": [
         "bares", "discotecas", "ver bares",

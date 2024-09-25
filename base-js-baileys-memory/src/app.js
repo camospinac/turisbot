@@ -32,11 +32,15 @@ const flowDespRest = addKeyword([EVENTS.ACTION])
     .addAnswer("LLAMANDO A LA CENTRAL.... 📞📞📞")
 
 const flowMenuRest = addKeyword([EVENTS.ACTION])
-    .addAnswer('Escribe el número del restaurante que deseas obtener más informacion 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow, fallBack }) => {
-        const resNumRest = ctx.body
+    .addAnswer('Escribe el nombre del restaurante que deseas obtener más información 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow }) => {
+        const nomResta = ctx.body.toUpperCase(); // Convertir la entrada a mayúsculas
         try {
-            const query = 'SELECT ruta_menu, titulo, direccion, num_contacto FROM sitios_turisticos WHERE codigo_categoria = $1 AND homocodres = $2';
-            const res = await client.query(query, ['RES', parseInt(resNumRest)]);
+            const query = `
+                SELECT ruta_menu, titulo, direccion, num_contacto 
+                FROM sitios_turisticos 
+                WHERE codigo_categoria = $1 
+                AND UPPER(titulo) LIKE $2`;
+            const res = await client.query(query, ['RES', `%${nomResta}%`]); // Usar LIKE con %%
             if (res.rows.length > 0) {
                 for (const row of res.rows) {
                     const { ruta_menu, titulo, direccion, num_contacto } = row;
@@ -46,7 +50,7 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
                         media: ruta_menu,
                     }]);
                 }
-                return gotoFlow(flowDespRest)
+                return gotoFlow(flowDespRest);
             } else {
                 await flowDynamic("No hay carta disponible para el restaurante seleccionado en este momento.");
             }
@@ -82,7 +86,7 @@ const flowSelRest = addKeyword([EVENTS.ACTION])
             if (res.rows.length > 0) {
                 for (const row of res.rows) {
                     const { homocodres, ruta_foto, titulo, descripcion, direccion } = row;
-                    const message = `Restaurante #${homocodres}\n*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
+                    const message = `*${titulo}*\n${descripcion}\n_Dirección: ${direccion}_`;
                     await flowDynamic([{
                         body: message,
                         media: ruta_foto,
@@ -123,7 +127,7 @@ const flowSitiosT = addKeyword([EVENTS.ACTION])
     });
 
 const flowCatRest = addKeyword([EVENTS.ACTION])
-    .addAnswer('🤔 *¿Qué deseas comer?* ', {}, async (ctx, { flowDynamic, gotoFlow }) => {
+    .addAnswer('Claro que si, acá en Girardot tenemos opciones apra todos los gustos 😋 \n*¿Qué deseas comer?* 🤔', {}, async (ctx, { flowDynamic, gotoFlow }) => {
         try {
             const tipoQuery = 'SELECT id, t_descripcion FROM tipo_restaurante WHERE t_estado = $1';
             const tipoRes = await client.query(tipoQuery, ['A']);
