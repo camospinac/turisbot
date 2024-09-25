@@ -32,12 +32,12 @@ const flowDespRest = addKeyword([EVENTS.ACTION])
 const flowMenuRest = addKeyword([EVENTS.ACTION])
     .addAnswer('Escribe el número del restaurante que deseas obtener más informacion 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow, fallBack }) => {
         const resNumRest = ctx.body
-        try{
+        try {
             const query = 'SELECT ruta_menu, titulo, direccion, num_contacto FROM sitios_turisticos WHERE codigo_categoria = $1 AND homocodres = $2';
             const res = await client.query(query, ['RES', parseInt(resNumRest)]);
             if (res.rows.length > 0) {
                 for (const row of res.rows) {
-                    const { ruta_menu, titulo, direccion, num_contacto} = row;
+                    const { ruta_menu, titulo, direccion, num_contacto } = row;
                     const message = `*${titulo}*\n📲 ${num_contacto}\n📌 ${direccion}`;
                     await flowDynamic([{
                         body: message,
@@ -48,7 +48,7 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
             } else {
                 await flowDynamic("No hay carta disponible para el restaurante seleccionado en este momento.");
             }
-        } catch(err){
+        } catch (err) {
             console.error("Error al recuperar la carta del restaurante: ", err);
             await flowDynamic("Ocurrió un error al recuperar la carta del restaurante.");
         }
@@ -141,28 +141,96 @@ const flowCatRest = addKeyword([EVENTS.ACTION])
     });
 
 
+const keywords = {
+    "1": [
+        "lugares", "sitios", "turísticos", "lugares turísticos",
+        "deseo conocer girardot", "quiero conocer girardot", "quiero visitar girardot",
+        "quiero ver lugares turísticos", "busco sitios para conocer", "deseo hacer turismo",
+        "turismo", "quiero ver sitios", "quiero explorar", "deseo explorar girardot",
+        "quiero ver qué hay en girardot", "quiero sitios turísticos", "deseo ver atracciones",
+        "enseñame lugares", "enseñame girardot", "quiero turistear", "conocer", "conocer girardot",
+        "deseo visitar lugares", "deseo conocer girardot"
+    ],
+    "2": [
+        "comer", "restaurantes", "restaurante", "ver restaurantes",
+        "quiero comer", "deseo comer", "busco algo de comer", "donde puedo comer",
+        "quiero un restaurante", "quiero algo de comida", "deseo ir a un restaurante",
+        "quiero ver restaurantes", "deseo almorzar", "deseo cenar", "busco restaurante",
+        "donde puedo cenar", "busco algo para cenar", "quiero comer algo",
+        "tengo hambre", "deseo almorzar algo", "muestrame restaurantes", "muero de hambre",
+        "restaurantes en girardot", "restaurant", "rest", "hambre"
+    ],
+    "3": [
+        "bares", "discotecas", "ver bares",
+        "quiero tomar algo", "quiero salir de fiesta", "busco un bar", "quiero un bar",
+        "deseo tomar algo", "quiero ir a un bar", "quiero ir a una discoteca",
+        "donde puedo tomar algo", "quiero salir a bailar", "quiero salir a un bar",
+        "deseo salir a una discoteca", "donde hay una discoteca", "busco una discoteca"
+    ],
+    "4": [
+        "hoteles", "ver hoteles", "dormir",
+        "donde puedo dormir", "quiero descansar", "deseo un hotel", "quiero un hotel",
+        "busco un hotel", "quiero descansar en un hotel", "donde puedo quedarme",
+        "quiero quedarme en un hotel", "deseo ir a un hotel", "busco alojamiento",
+        "quiero ver alojamientos", "donde puedo quedarme a dormir"
+    ],
+    "5": [
+        "piscinas", "ver piscinas", "nadar",
+        "quiero nadar", "quiero ir a una piscina", "deseo una piscina", "donde puedo nadar",
+        "quiero estar en una piscina", "busco una piscina", "quiero una piscina para nadar",
+        "deseo refrescarme", "quiero planes con piscina", "quiero ver planes con piscina",
+        "quiero disfrutar de una piscina"
+    ],
+    "6": [
+        "preguntar", "pregunta", "hablar", "decir algo",
+        "quiero preguntar", "tengo una duda", "quiero decir algo", "quiero saber algo",
+        "quiero preguntar algo", "deseo preguntar", "necesito preguntar algo",
+        "deseo saber algo", "puedo preguntar", "necesito información"
+    ],
+    "0": [
+        "salir", "adios", "terminar",
+        "deseo salir", "quiero salir", "quiero terminar", "quiero finalizar",
+        "deseo terminar", "quiero cerrar", "quiero terminar la conversación",
+        "ya no quiero seguir", "ya terminé", "quiero finalizar la conversación",
+        "ya terminé con el bot"
+    ]
+};
+
+const checkKeywords = (userInput) => {
+    userInput = userInput.toLowerCase();
+    for (const key in keywords) {
+        const keywordList = keywords[key];
+        for (const keyword of keywordList) {
+            if (userInput.includes(keyword.toLowerCase())) {
+                return key;
+            }
+        }
+    }
+    return null;
+};
+
 const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ']).addAnswer(
     menu,
     { capture: true },
     async (ctx, { gotoFlow, fallBack, flowDynamic }) => {
-        if (!["1", "2", "3", "4", "5", "6", "0"].includes(ctx.body)) {
-            return fallBack(
-                "Respuesta no válida 😔, por favor selecciona una de las opciones ☝🏼"
-            );
+        const matchedOption = checkKeywords(ctx.body);
+
+        if (matchedOption === null) {
+            return fallBack("No te entendí, por favor dime una palabra clave nuevamente.");
         }
-        switch (ctx.body) {
+        switch (matchedOption) {
             case "1":
                 return gotoFlow(flowSitiosT);
             case "2":
                 return gotoFlow(flowCatRest);
             case "3":
-                return await flowDynamic("Bares / Discotecas")
+                return await flowDynamic("Bares / Discotecas");
             case "4":
-                return await flowDynamic("Hoteles")
+                return await flowDynamic("Hoteles");
             case "5":
-                return await flowDynamic("Piscinas")
+                return await flowDynamic("Piscinas");
             case "6":
-                return await flowDynamic("Pregunta algo")
+                return await flowDynamic("Pregunta algo");
             case "0":
                 return await flowDynamic("🏃 Saliendo... Puedes volver a acceder a este menú escribiendo *menu*");
         }
@@ -171,20 +239,9 @@ const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ'])
 
 
 const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
-    .addAnswer(`☀️☀️ Holaaa, bienvenido a *Girardot*, donde el verano es eterno. No olvides tu traje de baño 👙 y tus ganas de disfrutar 🏊🏼. `)
-    .addAnswer(
-        [
-            '👉 A continuación escribe *MENÚ* para mostrarte las opciones disponibles',
-        ].join('\n'),
-        { delay: 800, capture: true },
-        async (ctx, { fallBack }) => {
-            if (!['menu', 'menú'].includes(ctx.body.toLocaleLowerCase())) {
-                return fallBack('Debes escribir *menu* 👀')
-            }
-            return
-        },
-        [menuFlow]
-    )
+    .addAnswer(`☀️☀️ Holaaa soy TurisBot y te doy la bienvenida a *Girardot*, donde el verano es eterno. No olvides tu traje de baño 👙 y tus ganas de disfrutar 🏊🏼. `, {}, async (ctx, { flowDynamic, gotoFlow }) => {
+        return gotoFlow(menuFlow)
+    })
 
 const main = async () => {
     const adapterFlow = createFlow([welcomeFlow, menuFlow, flowCatRest, flowSitiosT, flowSelRest, flowOpcionRest, flowMenuRest])
