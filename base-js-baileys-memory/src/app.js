@@ -14,8 +14,6 @@ const { Client } = pkg;
 import { keywords } from '../Keywords/catKeywords.js';
 import { foodKeywords } from '../Keywords/tiprestKeywords.js';
 
-//reservabot@reservabot.iam.gserviceaccount.com
-
 const PORT = process.env.PORT ?? 3008
 
 const client = new Client({
@@ -28,23 +26,22 @@ const client = new Client({
 
 client.connect();
 
-const flowDespRest = addKeyword([EVENTS.ACTION])
-    .addAnswer("LLAMANDO A LA CENTRAL.... 📞📞📞")
 
 const flowMenuRest = addKeyword([EVENTS.ACTION])
-    .addAnswer('Escribe el nombre del restaurante que deseas obtener más información 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow }) => {
-        const nomResta = ctx.body.toUpperCase(); // Convertir la entrada a mayúsculas
+    .addAnswer('Escribe el nombre del restaurante que deseas obtener más información 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow, state }) => {
+        const nomResta = ctx.body.toUpperCase();
         try {
             const query = `
-                SELECT ruta_menu, titulo, direccion, num_contacto 
+                SELECT ruta_menu, titulo, direccion, num_contacto, codigo_sitio 
                 FROM sitios_turisticos 
                 WHERE codigo_categoria = $1 
                 AND UPPER(titulo) LIKE $2`;
-            const res = await client.query(query, ['RES', `%${nomResta}%`]); // Usar LIKE con %%
+            const res = await client.query(query, ['RES', `%${nomResta}%`]);
             if (res.rows.length > 0) {
                 for (const row of res.rows) {
-                    const { ruta_menu, titulo, direccion, num_contacto } = row;
+                    const { ruta_menu, titulo, direccion, num_contacto, codigo_sitio } = row;
                     const message = `*${titulo}*\n📲 ${num_contacto}\n📌 ${direccion}`;
+                    await state.update({ codigo_sitio });
                     await flowDynamic([{
                         body: message,
                         media: ruta_menu,
@@ -57,6 +54,62 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
         } catch (err) {
             console.error("Error al recuperar la carta del restaurante: ", err);
             await flowDynamic("Ocurrió un error al recuperar la carta del restaurante.");
+        }
+    });
+
+const flowReservaRest = addKeyword(['reservar', 'reserva'])
+    .addAnswer('Por favor, dime tu nombre completo:', { capture: true }, async (ctx, { flowDynamic, state }) => {
+        const nombre = ctx.body;
+        console.log('Nombre del cliente:', nombre);
+        ctx.nombreCliente = nombre;
+        await flowDynamic('¿Cuántos comensales son?');
+    })
+    .addAnswer('', { capture: true }, async (ctx, { flowDynamic }) => {
+        const cantidadComensales = ctx.body;
+        console.log('Cantidad de comensales:', cantidadComensales);
+        ctx.cantidadComensales = cantidadComensales;
+        await flowDynamic('Por favor, indícame tu correo electrónico:');
+    })
+    .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state }) => {
+        if (!ctx.session) ctx.session = {};
+        const correo = ctx.body;
+        console.log('Correo electrónico:', correo);
+        ctx.correoCliente = correo;
+        const codigoSitio = state.get('codigo_sitio');
+        console.log(codigoSitio)
+        try {
+            const queryMesas = `
+                SELECT *
+                FROM mesas
+                WHERE codigo_sitio = $1`;
+            const resMesas = await client.query(queryMesas, [codigoSitio]);
+            if (resMesas.rows.length > 0) {
+                let mensajeMesas = 'Mesas disponibles:\n';
+                resMesas.rows.forEach(mesa => {
+                    mensajeMesas += `Mesa ${mesa.numero_mesa} - Capacidad: ${mesa.capacidad} personas\n`;
+                });
+                await flowDynamic(mensajeMesas);
+            } else {
+                await flowDynamic('No hay mesas disponibles en este momento.');
+            }
+        } catch (err) {
+            console.error("Error al recuperar las mesas: ", err);
+            await flowDynamic('Ocurrió un error al consultar las mesas.');
+        }
+        await flowDynamic('¡Gracias! Pronto confirmaremos tu reserva vía email.');
+    });
+
+const flowDespRest = addKeyword([EVENTS.ACTION])
+    .addAnswer('¿Deseas reservar en este restaurante? 🤔\nEscribe *SI* ✅ o *NO* ❌', { capture: true }, async (ctx, { flowDynamic, fallBack, gotoFlow }) => {
+        const resReserva = ctx.body;
+        if (!["si", "no"].includes(resReserva.toLocaleLowerCase())) {
+            return fallBack('Debes escribir *SI* ✅ o *NO* ❌')
+        } else {
+            if (resReserva.toLocaleLowerCase() === 'si') {
+                return gotoFlow(flowReservaRest)
+            } else {
+                return gotoFlow(menuFlow)
+            }
         }
     });
 
@@ -210,7 +263,7 @@ const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
     })
 
 const main = async () => {
-    const adapterFlow = createFlow([welcomeFlow, menuFlow, flowCatRest, flowSitiosT, flowSelRest, flowOpcionRest, flowMenuRest])
+    const adapterFlow = createFlow([welcomeFlow, menuFlow, flowCatRest, flowSitiosT, flowSelRest, flowOpcionRest, flowMenuRest, flowReservaRest, flowDespRest])
 
     const adapterProvider = createProvider(Provider)
     const adapterDB = new Database()
