@@ -31,17 +31,13 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
     .addAnswer('Escribe el nombre del restaurante que deseas obtener más información 🤗', { capture: true }, async (ctx, { flowDynamic, gotoFlow, state }) => {
         const nomResta = ctx.body.toUpperCase();
         try {
-            const query = `
-                SELECT ruta_menu, titulo, direccion, num_contacto, codigo_sitio 
-                FROM sitios_turisticos 
-                WHERE codigo_categoria = $1 
-                AND UPPER(titulo) LIKE $2`;
+            const query = `SELECT ruta_menu, titulo, direccion, num_contacto, codigo_sitio FROM sitios_turisticos WHERE codigo_categoria = $1 AND UPPER(titulo) LIKE $2`;
             const res = await client.query(query, ['RES', `%${nomResta}%`]);
             if (res.rows.length > 0) {
                 for (const row of res.rows) {
                     const { ruta_menu, titulo, direccion, num_contacto, codigo_sitio } = row;
                     const message = `*${titulo}*\n📲 ${num_contacto}\n📌 ${direccion}`;
-                    await state.update({ codigo_sitio });
+                    await state.update({ sitio: codigo_sitio });
                     await flowDynamic([{
                         body: message,
                         media: ruta_menu,
@@ -75,13 +71,10 @@ const flowReservaRest = addKeyword(['reservar', 'reserva'])
         const correo = ctx.body;
         console.log('Correo electrónico:', correo);
         ctx.correoCliente = correo;
-        const codigoSitio = state.get('codigo_sitio');
+        const codigoSitio = state.get('sitio');
         console.log(codigoSitio)
         try {
-            const queryMesas = `
-                SELECT *
-                FROM mesas
-                WHERE codigo_sitio = $1`;
+            const queryMesas = `SELECT * FROM mesas WHERE codigo_sitio = $1`;
             const resMesas = await client.query(queryMesas, [codigoSitio]);
             if (resMesas.rows.length > 0) {
                 let mensajeMesas = 'Mesas disponibles:\n';
