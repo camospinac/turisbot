@@ -103,14 +103,65 @@ const flowReservaRest = addKeyword(['reservar', 'reserva'])
         await flowDynamic('Por favor, selecciona uno de los horarios acontinuación:');
     })
 
-    .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state }) => {
+    .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state, gotoFlow }) => {
         const horario = ctx.body;
+        const codRes = state.get('sitio');
+        const capacidad = state.get('comensal');
+        const fechaRes = state.get('fechaRese');
+        const nombreRes = state.get('nombreCliente');
+        const emailReserva = state.get('correo');
         console.log('Horario escogido: ', horario);
-    });
+        await state.update({horarior: horario})
+        try {
+            const queryDispo = `
+                SELECT m.id_mesa
+                FROM mesas m
+                WHERE m.codigo_sitio = $1 AND capacidad >= $2 AND m.id_mesa NOT IN (
+                    SELECT r.id_mesa
+                    FROM reservas r
+                        WHERE r.id_horario = $3 AND r.fecha = $4
+                )
+                limit 1;`;
+            const resReserva = await client.query(queryDispo, [codRes, capacidad, horario, fechaRes]);
+            if (resReserva.rows.length > 0) {
+                let idMesaRes = '';
+                resReserva.rows.forEach(resReserva => {
+                    idMesaRes += `${resReserva.id_mesa}`
+                })
+                console.log('Id mesa disponible:', idMesaRes);
+                await state.update({ mesa: idMesaRes });
+                const msjConfReserva = `*Nombre:* ${nombreRes}\n*Comensales:* ${capacidad}\n*Email:* ${emailReserva}\n*Fecha reserva:* ${fechaRes}\n*Horario:* ${horario}\n*Mesa:* ${idMesaRes}`
+                console.log('Mensaje enviado: ', msjConfReserva);
+                await flowDynamic('A continuación los datos de tu reserva:')
+                await flowDynamic(msjConfReserva);
+            } else {
+                await flowDynamic('No hay disponibilidad de mesas en este momento, comunicate directamente con el restaurante.');
+            }
+        } catch (err) {
+            console.error("Error al recuperar la mesa: ", err);
+            await flowDynamic('Ocurrió un error al consultar las mesas.');
+        }
+        await flowDynamic('¿Deseas hacer la reserva? 🤔\nEscribe *SI* ✅ o *NO* ❌');
+    })
 
-    // .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state }) => {
+    // .addAnswer('', async ({ flowDynamic, state }) => {
+    //     // const nombreRes = state.get('nombreCliente');
+    //     // const cantComensal =  state.get('comensal');
+    //     // const emailReserva = state.get('correo');
+    //     // const fechaRes = state.get('fechaRese');
+    //     // const horario = state.get('horarior');
+    //     // const mesaRes = state.get('mesa');
 
-
+    //     const nombreRes = 'PRUEBA'
+    //     const cantComensal =  'PRUEBA'
+    //     const emailReserva = 'PRUEBA'
+    //     const fechaRes = 'PRUEBA'
+    //     const horario = 'PRUEBA'
+    //     const mesaRes = 'PRUEBA'
+    //     const msjConfReserva = `*Nombre:* ${nombreRes}\n*Comensales:* ${cantComensal}\n*Email:* ${emailReserva}\n*Fecha reserva:* ${fechaRes}\n*Horario:* ${horario}\n*Mesa:* ${mesaRes}`
+    //     console.log('Mensaje enviado: ', msjConfReserva);
+    //     await flowDynamic(msjConfReserva);
+    //     // await flowDynamic('¿Deseas hacer la reserva? 🤔\nEscribe *SI* ✅ o *NO* ❌')
     // });
 
 const flowDespRest = addKeyword([EVENTS.ACTION])
