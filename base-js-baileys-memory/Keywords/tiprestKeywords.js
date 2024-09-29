@@ -36,6 +36,6 @@ export const foodKeywords = {
         "comida fina", "comida delicada", "comida exclusiva", "menú gourmet", "chef especial", 
         "presentación gourmet", "cena fina", "experiencia gastronómica", "platos gourmet", 
         "comida con estilo", "cocina gourmet", "cena especial", "gastronomía de lujo", "comida elaborada",
-        "elegante", "estilo", "especial"
+        "elegante", "estilo", "especial", "gorumet"
     ]
 };

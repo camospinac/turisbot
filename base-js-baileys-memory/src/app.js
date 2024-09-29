@@ -370,7 +370,7 @@ const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ'])
 );
 
 
-const welcomeFlow = addKeyword(['hi', 'hello', 'hola'])
+const welcomeFlow = addKeyword(['hi', 'hello', 'hola', 'holi', 'ola', 'holanda', 'holiwi', 'holis'])
     .addAnswer(`☀️☀️ Holaaa soy TurisBot y te doy la bienvenida a *Girardot*, donde el verano es eterno. No olvides tu traje de baño 👙 y tus ganas de disfrutar 🏊🏼. `, {}, async (ctx, { flowDynamic, gotoFlow }) => {
         return gotoFlow(menuFlow)
     })
