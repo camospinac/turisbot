@@ -32,8 +32,8 @@ const enviarMailReserva = async (emailDestino, nombreCliente, detallesReserva) =
         port: 587,
         secure: false,
         auth: {
-            user: 'email@mail.com',
-            pass: 'password+'
+            user: 'camospinac@outlook.com',
+            pass: 'password'
         }
     });
     const mailOptions = {
@@ -52,10 +52,10 @@ const enviarMailReserva = async (emailDestino, nombreCliente, detallesReserva) =
 
 const validarFecha = (fecha) => {
     if (!moment(fecha, 'YYYY-MM-DD', true).isValid()) {
-        return { valido: false, mensaje: 'El formato de la fecha no es válido o la fecha no existe.' };
+        return { valido: false, mensaje: 'El formato de la fecha no es válido o la fecha no existe 😔\n_Vuelve a escribir la fecha, recuerda que el formato adecuado es AAAA-MM-DD_' };
     }
     if (moment(fecha).isBefore(moment().startOf('day'))) {
-        return { valido: false, mensaje: 'La fecha no puede ser anterior a hoy.' };
+        return { valido: false, mensaje: 'La fecha no puede ser anterior a hoy 😔\n_Vuelve a escribir la fecha, recuerda que el formato adecuado es AAAA-MM-DD_' };
     }
     return { valido: true };
 }
@@ -88,20 +88,20 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
         }
     });
 
-    const flowReservaRest = addKeyword(['reservar', 'reserva'])
-    .addAnswer('Por favor, dime tu nombre completo:', { capture: true }, async (ctx, { flowDynamic, state }) => {
+const flowReservaRest = addKeyword(['reservar', 'reserva'])
+    .addAnswer('Por favor, dime tu nombre completo 🤓', { capture: true }, async (ctx, { flowDynamic, state }) => {
         const nombre = ctx.body;
         console.log('Nombre del cliente:', nombre);
         ctx.nombreCliente = nombre;
         await state.update({ nombreCliente: nombre });
-        await flowDynamic('¿Cuántos comensales son?');
+        await flowDynamic('¿Cuántos comensales son 👥?');
     })
     .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state }) => {
         const cantidadComensales = ctx.body;
         console.log('Cantidad de comensales:', cantidadComensales);
         ctx.cantidadComensales = cantidadComensales;
         await state.update({ comensal: cantidadComensales });
-        await flowDynamic('Por favor, indícame tu correo electrónico:');
+        await flowDynamic('Por favor, indícame tu correo electrónico 📧');
     })
 
     .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state }) => {
@@ -109,15 +109,15 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
         console.log('Correo electrónico:', correo);
         ctx.correoCliente = correo;
         await state.update({ correo: correo });
-        await flowDynamic('Por favor escribe la fecha en la que quieras reservar:')
-        await flowDynamic('_El formato de la fecha debe ser: AAAA-MM-DD_');
+        await flowDynamic('Por favor escribe la fecha en la que quieras reservar 📅')
+        await flowDynamic('_El formato de la fecha debe ser: AAAA-MM-DD_ 🤓');
     })
 
     .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state, fallBack }) => {
         const fechaRes = ctx.body;
         const validacion = validarFecha(fechaRes); // Aquí llamamos a la función de validación de fecha
         console.log('Fecha reserva: ', fechaRes);
-        
+
         if (!validacion.valido) {
             return fallBack(validacion.mensaje);
         } else {
@@ -138,18 +138,16 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
                     ORDER BY h.id_horario ASC;
                 `;
                 const resHoras = await client.query(queryHoras, [codRes, fechaRes, codRes]);
-
+                await flowDynamic('Por favor, selecciona uno de los horarios ⌛');
                 if (resHoras.rows.length > 0) {
-                    let mensajeHora = 'Horarios disponibles para el ' + fechaRes + ':\n';
+                    let mensajeHora = '📅 Horarios disponibles para el ' + fechaRes + '\n';
                     resHoras.rows.forEach(hora => {
-                        mensajeHora += `${hora.id_horario} - Hora: ${hora.hora_inicio} a ${hora.hora_fin}\n`;
+                        mensajeHora += `${hora.id_horario} - Hora: ${hora.hora_inicio} a ${hora.hora_fin} 🕒\n`;
                     });
                     await flowDynamic(mensajeHora);
                 } else {
                     await flowDynamic('No hay horarios disponibles para la fecha seleccionada.');
                 }
-
-                await flowDynamic('Por favor, selecciona uno de los horarios:');
             } catch (err) {
                 console.error("Error al recuperar los horarios: ", err);
                 await flowDynamic('Ocurrió un error al consultar los horarios.');
@@ -184,18 +182,19 @@ const flowMenuRest = addKeyword([EVENTS.ACTION])
 
             if (resReserva.rows.length > 0) {
                 const idMesaRes = resReserva.rows[0].id_mesa;
-                
+
                 try {
                     const queryReserva = `
                         INSERT INTO reservas (id_mesa, id_horario, fecha, nombre_cliente, telefono_cliente, estado, correo, cod_rest_res)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
                     `;
                     await client.query(queryReserva, [idMesaRes, horario, fechaRes, nombreRes, '8323230', 'Reservado', emailReserva, codRes]);
-
-                    // Actualización del estado del horario
                     await state.update({ mesa: idMesaRes });
-                    await flowDynamic('Tu reserva se ha realizado con éxito.');
-                    await flowDynamic(`*Nombre:* ${nombreRes}\n*Comensales:* ${capacidad}\n*Email:* ${emailReserva}\n*Fecha reserva:* ${fechaRes}\n*Horario:* ${horario}\n*Mesa:* ${idMesaRes}`);
+                    const msjConfReserva = `*Nombre:* ${ nombreRes }\n*Comensales:* ${ capacidad }\n*Email:* ${ emailReserva }\n*Fecha reserva:* ${ fechaRes }\n*Horario:* ${ horario }\n*Mesa:* ${ idMesaRes }`;
+                    console.log('Mensaje enviado: ', msjConfReserva);
+                    await flowDynamic('A continuación los datos de tu reserva:');
+                    await flowDynamic(msjConfReserva);
+                    await flowDynamic('Reserva guardada con éxito, verifica tu correo para más detalles, atendido por TurisBot 🤖');
                     await enviarMailReserva(emailReserva, nombreRes, msjConfReserva);
 
                 } catch (err) {
