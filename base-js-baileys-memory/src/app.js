@@ -16,6 +16,8 @@ const { Client } = pkg;
 import { keywords } from '../Keywords/catKeywords.js';
 import { foodKeywords } from '../Keywords/tiprestKeywords.js';
 
+
+
 const PORT = process.env.PORT ?? 3008
 
 const client = new Client({
@@ -26,21 +28,24 @@ const client = new Client({
     port: '5432' //process.env.PG_PORT
 });
 
+function validarCorreo(correo) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(correo);
+}
+
 const enviarMailReserva = async (emailDestino, nombreCliente, detallesReserva) => {
     const transporter = nodemailer.createTransport({
-        host: 'smtp.office365.com',
-        port: 587,
-        secure: false,
+        service: 'gmail',
         auth: {
-            user: 'camospinac@outlook.com',
-            pass: 'password'
+            user: 'camospinac@gmail.com',
+            pass: ''
         }
     });
     const mailOptions = {
-        from: 'camospinac@outlook.com',
+        from: '"Turisbot 🤖☀️ By Camilo Ospina" <camospinac@gmail.com>',
         to: emailDestino,
         subject: 'Confirmación de tu reserva',
-        text: `Hola ${nombreCliente},\n\nGracias por tu reserva. Aquí tienes los detalles:\n${detallesReserva}\n\nSaludos, TurisBot - Desarrollado por Camilo Ospina.` // Cuerpo
+        text: `Hola ${nombreCliente},\n\nGracias por tu reserva. Aquí tienes los detalles:\n${detallesReserva}\n\nSaludos, Restaurante.`
     };
     try {
         const info = await transporter.sendMail(mailOptions);
@@ -96,26 +101,39 @@ const flowReservaRest = addKeyword(['reservar', 'reserva'])
         await state.update({ nombreCliente: nombre });
         await flowDynamic('¿Cuántos comensales son 👥?');
     })
-    .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state }) => {
-        const cantidadComensales = ctx.body;
-        console.log('Cantidad de comensales:', cantidadComensales);
-        ctx.cantidadComensales = cantidadComensales;
-        await state.update({ comensal: cantidadComensales });
-        await flowDynamic('Por favor, indícame tu correo electrónico 📧');
+
+
+    .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state, fallBack }) => {
+        const textoUsuario = ctx.body;
+        console.log('Respuesta del usuario:', textoUsuario);
+        const numerosEncontrados = textoUsuario.match(/\d+/g);
+        if (numerosEncontrados) {
+            const cantidadComensales = numerosEncontrados.map(Number).reduce((acc, num) => acc + num, 0);
+            console.log('Cantidad de comensales calculada:', cantidadComensales);
+            await state.update({ comensal: cantidadComensales });
+            await flowDynamic('Por favor, indícame tu correo electrónico 📧');
+        } else {
+            return fallBack('Por favor, indícame cuántas personas son (en números).');
+        }
     })
 
-    .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state }) => {
+    .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state, fallBack }) => {
         const correo = ctx.body;
         console.log('Correo electrónico:', correo);
         ctx.correoCliente = correo;
-        await state.update({ correo: correo });
-        await flowDynamic('Por favor escribe la fecha en la que quieras reservar 📅')
-        await flowDynamic('_El formato de la fecha debe ser: AAAA-MM-DD_ 🤓');
+        if (validarCorreo(correo)) {
+            await state.update({ correo: correo });
+            await flowDynamic('Por favor escribe la fecha en la que quieras reservar 📅')
+            await flowDynamic('_El formato de la fecha debe ser: AAAA-MM-DD_ 🤓');
+        } else {
+            return fallBack('Correo no valido 😔\n_El formato de correo debe ser ejemplo@mail.com_ 🤓');
+        }
+
     })
 
     .addAnswer('', { capture: true }, async (ctx, { flowDynamic, state, fallBack }) => {
         const fechaRes = ctx.body;
-        const validacion = validarFecha(fechaRes); // Aquí llamamos a la función de validación de fecha
+        const validacion = validarFecha(fechaRes);
         console.log('Fecha reserva: ', fechaRes);
 
         if (!validacion.valido) {
@@ -190,7 +208,7 @@ const flowReservaRest = addKeyword(['reservar', 'reserva'])
                     `;
                     await client.query(queryReserva, [idMesaRes, horario, fechaRes, nombreRes, '8323230', 'Reservado', emailReserva, codRes]);
                     await state.update({ mesa: idMesaRes });
-                    const msjConfReserva = `*Nombre:* ${ nombreRes }\n*Comensales:* ${ capacidad }\n*Email:* ${ emailReserva }\n*Fecha reserva:* ${ fechaRes }\n*Horario:* ${ horario }\n*Mesa:* ${ idMesaRes }`;
+                    const msjConfReserva = `*Nombre:* ${nombreRes}\n*Comensales:* ${capacidad}\n*Email:* ${emailReserva}\n*Fecha reserva:* ${fechaRes}\n*Horario:* ${horario}\n*Mesa:* ${idMesaRes}`;
                     console.log('Mensaje enviado: ', msjConfReserva);
                     await flowDynamic('A continuación los datos de tu reserva:');
                     await flowDynamic(msjConfReserva);
@@ -281,6 +299,8 @@ const flowSitiosT = addKeyword([EVENTS.ACTION])
                         media: ruta_foto,
                     }]);
                 }
+                await flowDynamic("Estos son algunos de los sitios más emblemáticos y turísticos de la ciudad ☀️☀️");
+                return gotoFlow(menuFlow);
             } else {
                 console.log("No hay sitios turísticos disponibles para la categoría CUL.");
                 await flowDynamic("No hay sitios turísticos disponibles con el código 'CUL' en este momento.");
