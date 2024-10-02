@@ -26,7 +26,9 @@ export const keywords = {
         "quiero tomar algo", "quiero salir de fiesta", "busco un bar", "quiero un bar",
         "deseo tomar algo", "quiero ir a un bar", "quiero ir a una discoteca",
         "donde puedo tomar algo", "quiero salir a bailar", "quiero salir a un bar",
-        "deseo salir a una discoteca", "donde hay una discoteca", "busco una discoteca"
+        "deseo salir a una discoteca", "donde hay una discoteca", "busco una discoteca", "tomar",
+        "beber", "tomar algo", "sed", "sed de la mala", "cerveza", "cocteles", "bar", "tomadero",
+        "estanco", "licores", "licor", "cerveza"
     ],
     "4": [
         "hoteles", "ver hoteles", "dormir",

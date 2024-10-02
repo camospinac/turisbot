@@ -38,14 +38,29 @@ const enviarMailReserva = async (emailDestino, nombreCliente, detallesReserva) =
         service: 'gmail',
         auth: {
             user: 'camospinac@gmail.com',
-            pass: ''
+            pass: 'xx'
         }
     });
+    const detallesHTML = detallesReserva
+        .split('\n')
+        .map(linea => {
+            return `<p>${linea.replace(/\*(.*?)\*/g, '<strong>$1</strong>')}</p>`;
+        })
+        .join('');
+
     const mailOptions = {
         from: '"Turisbot 🤖☀️ By Camilo Ospina" <camospinac@gmail.com>',
         to: emailDestino,
         subject: 'Confirmación de tu reserva',
-        text: `Hola ${nombreCliente},\n\nGracias por tu reserva. Aquí tienes los detalles:\n${detallesReserva}\n\nSaludos, Restaurante.`
+        html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <h2 style="color: #f09e51;">Hola ${nombreCliente},</h2>
+                <p>Gracias por tu reserva, recuerda llegar con 10 minutos de anticipación para cualquier eventualidad, disfruta y aquí tienes los detalles:</p>
+                ${detallesHTML} <!-- Aquí se inserta el contenido dinámico -->
+                <p>¡Saludos!</p>
+                <p><strong>Turisbot 🤖☀️ by Camilo Ospina</strong></p>
+            </div>
+        `
     };
     try {
         const info = await transporter.sendMail(mailOptions);
@@ -54,6 +69,7 @@ const enviarMailReserva = async (emailDestino, nombreCliente, detallesReserva) =
         console.error('Error al enviar el correo: ', error);
     }
 };
+
 
 const validarFecha = (fecha) => {
     if (!moment(fecha, 'YYYY-MM-DD', true).isValid()) {
@@ -181,7 +197,6 @@ const flowReservaRest = addKeyword(['reservar', 'reserva'])
         const nombreRes = state.get('nombreCliente');
         const emailReserva = state.get('correo');
         await state.update({ horarior: horario });
-
         try {
             const queryDispo = `
                 SELECT m.id_mesa
@@ -197,24 +212,35 @@ const flowReservaRest = addKeyword(['reservar', 'reserva'])
                 LIMIT 1;
             `;
             const resReserva = await client.query(queryDispo, [codRes, capacidad, horario, fechaRes]);
-
             if (resReserva.rows.length > 0) {
                 const idMesaRes = resReserva.rows[0].id_mesa;
-
                 try {
-                    const queryReserva = `
-                        INSERT INTO reservas (id_mesa, id_horario, fecha, nombre_cliente, telefono_cliente, estado, correo, cod_rest_res)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+                    const queryHorario = `
+                        SELECT h.hora_inicio, h.hora_fin
+                        FROM horarios h
+                        WHERE h.id_horario = $1
+                        AND h.cod_res = $2;
                     `;
-                    await client.query(queryReserva, [idMesaRes, horario, fechaRes, nombreRes, '8323230', 'Reservado', emailReserva, codRes]);
-                    await state.update({ mesa: idMesaRes });
-                    const msjConfReserva = `*Nombre:* ${nombreRes}\n*Comensales:* ${capacidad}\n*Email:* ${emailReserva}\n*Fecha reserva:* ${fechaRes}\n*Horario:* ${horario}\n*Mesa:* ${idMesaRes}`;
-                    console.log('Mensaje enviado: ', msjConfReserva);
-                    await flowDynamic('A continuación los datos de tu reserva:');
-                    await flowDynamic(msjConfReserva);
-                    await flowDynamic('Reserva guardada con éxito, verifica tu correo para más detalles, atendido por TurisBot 🤖');
-                    await enviarMailReserva(emailReserva, nombreRes, msjConfReserva);
-
+                    const resHorario = await client.query(queryHorario, [horario, codRes]);
+                    if (resHorario.rows.length > 0) {
+                        const horaInicio = resHorario.rows[0].hora_inicio;
+                        const horaFin = resHorario.rows[0].hora_fin;
+                        const horarioTexto = `${horaInicio} - ${horaFin}`;
+                        const queryReserva = `
+                            INSERT INTO reservas (id_mesa, id_horario, fecha, nombre_cliente, telefono_cliente, estado, correo, cod_rest_res)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+                        `;
+                        await client.query(queryReserva, [idMesaRes, horario, fechaRes, nombreRes, '8323230', 'Reservado', emailReserva, codRes]);
+                        await state.update({ mesa: idMesaRes });
+                        const msjConfReserva = `*Nombre:* ${nombreRes}\n*Comensales:* ${capacidad}\n*Email:* ${emailReserva}\n*Fecha reserva:* ${fechaRes}\n*Horario:* ${horarioTexto}\n*Mesa:* ${idMesaRes}`;
+                        console.log('Mensaje enviado: ', msjConfReserva);
+                        await flowDynamic('A continuación los datos de tu reserva:');
+                        await flowDynamic(msjConfReserva);
+                        await flowDynamic('Reserva guardada con éxito, verifica tu correo para más detalles, atendido por TurisBot 🤖');
+                        await enviarMailReserva(emailReserva, nombreRes, msjConfReserva);
+                    } else {
+                        await flowDynamic('No se pudo encontrar el horario seleccionado.');
+                    }
                 } catch (err) {
                     console.error("Error al guardar la reserva: ", err);
                     await flowDynamic('Ocurrió un error al guardar la reserva.');
@@ -227,7 +253,6 @@ const flowReservaRest = addKeyword(['reservar', 'reserva'])
             await flowDynamic('Ocurrió un error al consultar las mesas.');
         }
     });
-
 
 const flowDespRest = addKeyword([EVENTS.ACTION])
     .addAnswer('¿Deseas reservar en este restaurante? 🤔\nEscribe *SI* ✅ o *NO* ❌', { capture: true }, async (ctx, { flowDynamic, fallBack, gotoFlow }) => {
