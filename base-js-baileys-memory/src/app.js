@@ -38,7 +38,7 @@ const enviarMailReserva = async (emailDestino, nombreCliente, detallesReserva) =
         service: 'gmail',
         auth: {
             user: 'camospinac@gmail.com',
-            pass: 'xx'
+            pass: ''
         }
     });
     const detallesHTML = detallesReserva
