@@ -38,7 +38,7 @@ const enviarMailReserva = async (emailDestino, nombreCliente, detallesReserva) =
         service: 'gmail',
         auth: {
             user: 'camospinac@gmail.com',
-            pass: ''
+            pass: 'aosf oksx szfg ywib'
         }
     });
     const detallesHTML = detallesReserva
@@ -359,6 +359,73 @@ const flowCatRest = addKeyword([EVENTS.ACTION])
         }
     });
 
+
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Radio de la Tierra en metros
+    const rad = Math.PI / 180; // Constante para convertir a radianes
+    const φ1 = lat1 * rad;
+    const φ2 = lat2 * rad;
+    const Δφ = (lat2 - lat1) * rad;
+    const Δλ = (lon2 - lon1) * rad;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const distancia = R * c; // Distancia en metros
+    return distancia;
+}
+
+const restaurantes = [ , 
+    { nombre: 'Restaurante Bogotá - La Ola del Sabor', latitud: 4.686004341626013, longitud: -74.15551206255613 },
+    { nombre: 'Restaurante Bogotá - Glotones de la 133', latitud: 4.693565556079797, longitud: -74.16788791154858 },
+    { nombre: 'Restaurante Bogotá - Tres Gourmet', latitud: 4.696324323950352, longitud: -74.15840334291411 },
+    { nombre: 'Restaurante Girardot - Michael Burguer', latitud: 4.302858537469106, longitud: -74.80819906472283 },
+    { nombre: 'Restaurante Girardot - Tamaleria Doña Rubiela', latitud: 4.300613837984341, longitud: -74.81133212851658 },
+]; 
+
+function obtenerRestaurantesCercanos(restaurantes, latUsuario, lonUsuario, radioEnMetros) {
+    return restaurantes.filter(restaurante => {
+        const distancia = calcularDistancia(latUsuario, lonUsuario, restaurante.latitud, restaurante.longitud);
+        return distancia <= radioEnMetros;
+    });
+}
+
+
+const locationReal = addKeyword([EVENTS.LOCATION])
+    .addAnswer('Por favor enviame tu ubicación: ', { capture: true }, async (ctx, { flowDynamic, gotoFlow }) => {
+        const userLatitude = ctx.message.locationMessage.degreesLatitude;
+        const userLongitude = ctx.message.locationMessage.degreesLongitude;
+        console.log('Longitud: ', userLongitude);
+        console.log('Altitud: ', userLatitude);
+        const msjLocation = `Tus coordenadas\nLongitud: ${userLongitude}\nAltitud: ${userLatitude}`;
+
+        const urlOpen = `https://www.openstreetmap.org/#map=19/${userLatitude}/${userLongitude}`;
+        await flowDynamic(msjLocation);
+        await flowDynamic(urlOpen);
+
+        const radioBusqueda = 3000; // Define el radio de búsqueda en metros (1km en este caso)
+        const restaurantesCercanos = obtenerRestaurantesCercanos(restaurantes, userLatitude, userLongitude, radioBusqueda);
+
+        // Si encuentra restaurantes cercanos, los muestra, de lo contrario, muestra un mensaje de no encontrados
+        if (restaurantesCercanos.length > 0) {
+            await flowDynamic('Restaurantes cercanos a ti:');
+            for (const restaurante of restaurantesCercanos) {
+                await flowDynamic(`- ${restaurante.nombre}`);
+            }
+        } else {
+            await flowDynamic('No se encontraron restaurantes cercanos en tu área.');
+        }
+    });
+
+
+
+
+const LocationFlow = addKeyword([EVENTS.ACTION])
+    .addAnswer('Hola!\nPara proporcionarte una mejor experiencia envianos tu ubicación\n_Al enviarnos tu ubicación aceptas la politica de tratamiento de datos_ https://shorturl.at/JRQee', {}, async (ctx, { flowDynamic, gotoFlow }) => {
+        return gotoFlow(locationReal)
+    });
 const checkKeywords = (userInput) => {
     userInput = userInput.toLowerCase();
     for (const key in keywords) {
@@ -385,6 +452,7 @@ const checkKeywordsRest = (userInput) => {
     return null;
 };
 
+
 const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ']).addAnswer(
     menu,
     { capture: true },
@@ -400,7 +468,7 @@ const menuFlow = addKeyword(['MENU', 'Menu', 'menu', 'Menú', 'menú', 'MENÚ'])
             case "2":
                 return gotoFlow(flowCatRest);
             case "3":
-                return await flowDynamic("Bares / Discotecas");
+                return gotoFlow(LocationFlow)
             case "4":
                 return await flowDynamic("Hoteles");
             case "5":
@@ -420,7 +488,7 @@ const welcomeFlow = addKeyword(['hi', 'hello', 'hola', 'holi', 'ola', 'holanda',
     })
 
 const main = async () => {
-    const adapterFlow = createFlow([welcomeFlow, menuFlow, flowCatRest, flowSitiosT, flowSelRest, flowOpcionRest, flowMenuRest, flowReservaRest, flowDespRest])
+    const adapterFlow = createFlow([welcomeFlow, menuFlow, locationReal, LocationFlow, flowCatRest, flowSitiosT, flowSelRest, flowOpcionRest, flowMenuRest, flowReservaRest, flowDespRest])
 
     const adapterProvider = createProvider(Provider)
     const adapterDB = new Database()
