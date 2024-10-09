@@ -363,17 +363,17 @@ const flowCatRest = addKeyword([EVENTS.ACTION])
 function calcularDistancia(lat1, lon1, lat2, lon2) {
     const R = 6371e3; // Radio de la Tierra en metros
     const rad = Math.PI / 180; // Constante para convertir a radianes
-    const φ1 = lat1 * rad;
-    const φ2 = lat2 * rad;
-    const Δφ = (lat2 - lat1) * rad;
-    const Δλ = (lon2 - lon1) * rad;
+    const o1 = lat1 * rad;
+    const o2 = lat2 * rad;
+    const deltaO = (lat2 - lat1) * rad;
+    const deltaY = (lon2 - lon1) * rad;
 
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) *
-        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const a = Math.sin(deltaO / 2) * Math.sin(deltaO / 2) +
+        Math.cos(o1) * Math.cos(o2) *
+        Math.sin(deltaY / 2) * Math.sin(deltaY / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-    const distancia = R * c; // Distancia en metros
+    const distancia = R * c;
     return distancia;
 }
 
