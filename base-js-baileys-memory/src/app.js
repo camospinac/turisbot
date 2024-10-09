@@ -361,8 +361,8 @@ const flowCatRest = addKeyword([EVENTS.ACTION])
 
 
 function calcularDistancia(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Radio de la Tierra en metros
-    const rad = Math.PI / 180; // Constante para convertir a radianes
+    const R = 6371e3;
+    const rad = Math.PI / 180;
     const o1 = lat1 * rad;
     const o2 = lat2 * rad;
     const deltaO = (lat2 - lat1) * rad;
@@ -405,10 +405,8 @@ const locationReal = addKeyword([EVENTS.LOCATION])
         await flowDynamic(msjLocation);
         await flowDynamic(urlOpen);
 
-        const radioBusqueda = 3000; // Define el radio de búsqueda en metros (1km en este caso)
+        const radioBusqueda = 3000;
         const restaurantesCercanos = obtenerRestaurantesCercanos(restaurantes, userLatitude, userLongitude, radioBusqueda);
-
-        // Si encuentra restaurantes cercanos, los muestra, de lo contrario, muestra un mensaje de no encontrados
         if (restaurantesCercanos.length > 0) {
             await flowDynamic('Restaurantes cercanos a ti:');
             for (const restaurante of restaurantesCercanos) {
